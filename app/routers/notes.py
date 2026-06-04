@@ -6,6 +6,7 @@ from ..database import get_db
 from ..models import Note, User
 from ..schemas import NoteCreate, NoteResponse
 import os
+from groq import Groq
 
 router = APIRouter(prefix="/notes", tags=["Notes"])
 
@@ -66,3 +67,41 @@ def delete_note(note_id: str, db: Session = Depends(get_db), current_user: User 
     db.delete(note)
     db.commit()
     return {"message": "Note deleted successfully"}
+
+
+@router.post("/{note_id}/summarize")
+def summarize_note(
+    note_id: str,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    note = db.query(Note).filter(
+        Note.id == note_id,
+        Note.user_id == current_user.id
+    ).first()
+
+    if not note:
+        raise HTTPException(status_code=404, detail="Note not found")
+
+    if note.summary:
+        return {"summary": note.summary, "cached": True}
+
+    try:
+        client = Groq(api_key=os.getenv("GROQ_API_KEY"))
+        response = client.chat.completions.create(
+            model="llama-3.3-70b-versatile",
+            messages=[{
+                "role": "user",
+                "content": f"Summarize this note in 2-3 sentences: {note.content}"
+            }]
+        )
+        summary = response.choices[0].message.content
+
+        note.summary = summary
+        db.commit()
+        db.refresh(note)
+
+        return {"summary": summary, "cached": False}
+
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"AI service error: {str(e)}")

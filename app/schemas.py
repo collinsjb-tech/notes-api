@@ -1,4 +1,5 @@
 from pydantic import BaseModel, EmailStr
+from typing import Optional
 
 # --- User Schemas ---
 class UserCreate(BaseModel):
@@ -21,6 +22,7 @@ class NoteResponse(BaseModel):
     id: str
     title: str
     content: str
+    summary: Optional[str] = None
     user_id: str
 
     class Config:

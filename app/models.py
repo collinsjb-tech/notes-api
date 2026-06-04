@@ -22,6 +22,7 @@ class Note(Base):
     id = Column(String, primary_key=True, default=generate_uuid)
     title = Column(String, nullable=False)
     content = Column(Text, nullable=False)
+    summary = Column(Text, nullable=True) 
     user_id = Column(String, ForeignKey("users.id"), nullable=False)
 
     owner = relationship("User", back_populates="notes")
